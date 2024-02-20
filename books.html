@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <title>User Page</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+  <style>
+    /* Add your custom styles here */
+  </style>
+</head>
+<body>
+
+
+  <nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <a class="navbar-brand" href="#">Books</a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav mr-auto">
+        <li class="nav-item">
+          <a class="nav-link" href="user.html">LMS</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="add_books.html">Add Book</a>
+        </li>
+      </ul>
+    </div>
+  </nav>
+  <div class="container mt-5">
+    <h2>Books</h2>
+
+
+    <ul id="bookList" class="list-group mt-4">
+
+    </ul>
+  </div>
+
+  
+  <div class="modal fade" id="updateBookModal" tabindex="-1" role="dialog" aria-labelledby="updateBookModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="updateBookModalLabel">Update Book</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+
+          <form id="updateBookForm">
+            <div class="form-group">
+              <label for="updateTitle">Title:</label>
+              <input type="text" class="form-control" id="updateTitle" required>
+            </div>
+            <div class="form-group">
+              <label for="updateAuthor">Author:</label>
+              <input type="text" class="form-control" id="updateAuthor" required>
+            </div>
+            <div class="form-group">
+              <label for="updateGenre">Genre:</label>
+              <input type="text" class="form-control" id="updateGenre" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      
+      fetchBooks();
+    });
+
+    function fetchBooks() {
+      fetch('/api/books')
+        .then(response => response.json())
+        .then(data => {
+          displayBooks(data);
+        })
+        .catch(error => {
+          console.error('Error fetching books:', error);
+        });
+    }
+
+    function displayBooks(books) {
+      const bookList = document.getElementById('bookList');
+      bookList.innerHTML = '';
+
+      books.forEach(book => {
+        const listItem = document.createElement('li');
+        listItem.textContent = `${book.title} by ${book.author} (${book.genre})`;
+
+        
+        const updateButton = document.createElement('button');
+        updateButton.textContent = 'Update';
+        updateButton.classList.add('btn', 'btn-warning', 'ml-2');
+        updateButton.addEventListener('click', function () {
+          openUpdateModal(book);
+        });
+
+        const deleteButton = document.createElement('button');
+        deleteButton.textContent = 'Delete';
+        deleteButton.classList.add('btn', 'btn-danger', 'ml-2');
+        deleteButton.addEventListener('click', function () {
+          deleteBook(book.id);
+        });
+
+        listItem.appendChild(updateButton);
+        listItem.appendChild(deleteButton);
+
+        listItem.classList.add('list-group-item');
+        bookList.appendChild(listItem);
+      });
+    }
+
+    function deleteBook(bookId) {
+      fetch(`/api/books/${bookId}`, {
+        method: 'DELETE',
+      })
+        .then(response => response.json())
+        .then(data => {
+          console.log('Book deleted successfully:', data);
+          
+          fetchBooks();
+        })
+        .catch(error => {
+          console.error('Error deleting book:', error);
+        });
+    }
+
+    function openUpdateModal(book) {
+  
+  document.getElementById('updateTitle').value = book.title;
+  document.getElementById('updateAuthor').value = book.author;
+  document.getElementById('updateGenre').value = book.genre;
+
+  
+  $('#updateBookModal').modal('show');
+
+  
+  document.getElementById('updateBookForm').addEventListener('submit', function (event) {
+    event.preventDefault();
+
+    
+    const updatedBook = {
+      title: document.getElementById('updateTitle').value,
+      author: document.getElementById('updateAuthor').value,
+      genre: document.getElementById('updateGenre').value,
+    };
+
+    
+    fetch(`/api/books/${book.id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(updatedBook),
+    })
+      .then(response => response.json())
+      .then(data => {
+        console.log('Updated Book:', data);
+        
+        $('#updateBookModal').modal('hide');
+        
+        fetchBooks();
+      })
+      .catch(error => {
+        console.error('Error updating book:', error);
+      });
+  });
+}
+  </script>
+</body>
+</html>

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <title>User Page</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+  <style>
+    /* Add your custom styles here */
+  </style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+  <a class="navbar-brand" href="#">LMS</a>
+  <div class="collapse navbar-collapse" id="navbarNav">
+    <ul class="navbar-nav mr-auto">
+      <li class="nav-item">
+        <a class="nav-link" href="books.html">Books</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="add_books.html">Add Book</a>
+      </li>
+    </ul>
+  </div>
+</nav>
+
+<div class="container mt-5">
+  <h2>Welcome to the User Page</h2>
+
+  <!-- Book List -->
+  <div id="bookList" class="row mt-4">
+    <!-- Book cards will be dynamically added here -->
+  </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+<!-- Inside user.html script -->
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+  // Fetch and display books on the user page when it loads
+  fetchBooks();
+
+  // Listen for messages from child windows
+  window.addEventListener('message', function (event) {
+    // Check if the received message is 'bookAdded'
+    if (event.data === 'bookAdded') {
+      // Fetch and display books on the user page after a new book is added
+      fetchBooks();
+    }
+  });
+});
+
+  
+
+function fetchBooks() {
+  // You should fetch the list of available books from your server (replace the URL accordingly)
+  fetch('/api/available-books')
+    .then(response => response.json())
+    .then(data => {
+      displayBooks(data);
+    })
+    .catch(error => {
+      console.error('Error fetching books:', error);
+    });
+}
+  function displayBooks(books) {
+    const bookListContainer = document.getElementById('bookList');
+    bookListContainer.innerHTML = '';
+
+    books.forEach(book => {
+      // Create a card for each book
+      const card = document.createElement('div');
+      card.classList.add('col-md-4', 'mb-4');
+
+      card.innerHTML = `
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title">${book.title}</h5>
+            <p class="card-text">Author: ${book.author}</p>
+            <p class="card-text">Genre: ${book.genre}</p>
+            <button class="btn btn-primary" onclick="borrowBook('${book.title}')">Borrow</button>
+          </div>
+        </div>
+      `;
+
+      bookListContainer.appendChild(card);
+    });
+  }
+
+  function borrowBook(bookTitle) {
+  const userName = prompt('Please enter your name:');
+
+  if (userName) {
+    const confirmation = confirm(`Do you want to borrow the book "${bookTitle}"?`);
+
+    if (confirmation) {
+      fetch('/api/borrow', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userName, bookTitle }),
+      })
+        .then(response => response.json())
+        .then(data => {
+          // Display a success message or handle as needed
+          console.log('Book borrowed successfully:', data);
+
+          // Remove the card of the borrowed book from the UI
+          const card = findCardByTitle(bookTitle);
+          if (card) {
+            card.remove();
+          }
+        })
+        .catch(error => {
+          console.error('Error borrowing book:', error);
+        });
+    }
+  }
+}
+  function findCardByTitle(title) {
+    const cards = document.querySelectorAll('.card');
+    for (const card of cards) {
+      const cardTitle = card.querySelector('.card-title').innerText.trim();
+      if (cardTitle === title.trim()) {
+        return card;
+      }
+    }
+    return null;
+  }
+</script>
+</body>
+</html>

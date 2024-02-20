@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <title>add book</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+  <style>
+    /* Add your custom styles here */
+  </style>
+</head>
+<body>
+
+  <nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <a class="navbar-brand" href="#">Add books</a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav mr-auto">
+        <li class="nav-item">
+          <a class="nav-link" href="user.html">LMS</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="books.html">Books</a>
+        </li>
+      </ul>
+    </div>
+  </nav>
+  <div class="container mt-5">
+    <h2>Add Book</h2>
+
+    
+    <form id="addBookForm">
+      <div class="form-group">
+        <label for="title">Title</label>
+        <input type="text" class="form-control" id="title" required>
+      </div>
+      <div class="form-group">
+        <label for="author">Author</label>
+        <input type="text" class="form-control" id="author" required>
+      </div>
+      <div class="form-group">
+        <label for="genre">Genre</label>
+        <input type="text" class="form-control" id="genre" required>
+      </div>
+      <button type="submit" class="btn btn-primary">Add Book</button>
+    </form>
+
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+  <!-- Inside add_book.html script -->
+
+  
+  <script>
+  function addBook(title, author, genre) {
+    fetch('/api/books', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        title: title,
+        author: author,
+        genre: genre,
+      }),
+    })
+      .then(response => response.json())
+      .then(data => {
+        console.log('Book added successfully:', data);
+
+        // Fetch and display books on the user page after adding a new book
+        return fetchBooks();
+      })
+      .then(() => {
+  // Clear the form fields after successful addition
+  document.getElementById('title').value = '';
+  document.getElementById('author').value = '';
+  document.getElementById('genre').value = '';
+
+  // Notify user.html about the new book addition
+  window.parent.postMessage('bookAdded', '*');
+
+  // Provide user feedback about the successful addition
+  alert('Book added successfully!');
+})
+      .catch(error => {
+        console.error('Error adding book:', error);
+
+        // Provide user feedback about the error
+        alert('Error adding book. Please try again.');
+      });
+  }
+
+  // Function to fetch and display books on the user page
+  function fetchBooks() {
+    fetch('/api/books')
+      .then(response => response.json())
+      .then(books => {
+        // Display the updated list of books on the user page
+        displayBooksOnUserPage(books);
+      })
+      .catch(error => {
+        console.error('Error fetching books:', error);
+      });
+  }
+
+  // Function to display books on the user page
+  function displayBooksOnUserPage(books) {
+    const bookListElement = document.getElementById('bookList');
+
+    // Clear the existing content
+    bookListElement.innerHTML = '';
+
+    // Iterate through each book and create a card for display
+    books.forEach(book => {
+      const card = document.createElement('div');
+      card.classList.add('col-md-4', 'mb-4');
+
+      card.innerHTML = `
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title">${book.title}</h5>
+            <p class="card-text">Author: ${book.author}</p>
+            <p class="card-text">Genre: ${book.genre}</p>
+            <button class="btn btn-primary" onclick="borrowBook('${book.title}')">Borrow</button>
+          </div>
+        </div>
+      `;
+
+      bookListElement.appendChild(card);
+    });
+  }
+
+  // Event listener for the form submission
+  document.addEventListener('DOMContentLoaded', function () {
+    const addBookForm = document.getElementById('addBookForm');
+    addBookForm.addEventListener('submit', function (event) {
+      event.preventDefault();
+      const title = document.getElementById('title').value;
+      const author = document.getElementById('author').value;
+      const genre = document.getElementById('genre').value;
+
+      // Call the addBook function with the form input values
+      addBook(title, author, genre);
+    });
+  });
+  window.parent.postMessage('bookAdded', '*');
+</script>
+
+
+  
+</body>
+</html>

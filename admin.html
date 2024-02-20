@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background-color: #f8f9fa;
+      padding: 20px;
+    }
+  
+    .content {
+      max-width: 600px;
+      margin: 0 auto;
+      background-color: #fff;
+      border: 1px solid #ced4da;
+      border-radius: 8px;
+      padding: 20px;
+      margin-top: 20px;
+    }
+  
+    .logout-button {
+      margin-top: 20px;
+    }
+  
+    .input-container {
+      margin-top: 10px;
+    }
+  
+    .btn-container {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="content">
+    <h1>You authorized like an admin</h1>
+    <div class="content">
+      <h1>Animals</h1>
+      
+        Animals are multicellular eukaryotic organisms that form the biological kingdom Animalia. 
+        They are one of the six basic kingdoms of life and include a vast variety of living organisms.
+      </div>
+    
+    <div id="addUserInputContainer" class="input-container" style="display: none;">
+      
+      <input type="text" id="newUsername" class="form-control" placeholder="Enter Username">
+      <input type="text" id="newEmail" class="form-control" placeholder="Enter Email">
+      <input type="password" id="newPassword" class="form-control" placeholder="Enter Password">
+      <input type="text" id="newRole" class="form-control" placeholder="Enter Role">
+      <button onclick="addUser()" class="btn btn-success">Confirm Addition</button>
+    </div>
+
+    <div id="deleteInputContainer" class="input-container" style="display: none;">
+      
+      <input type="text" id="userIdToDelete" class="form-control" placeholder="Enter User ID">
+      <button onclick="deleteUser()" class="btn btn-danger">Confirm Deletion</button>
+    </div>
+
+    <div class="btn-container">
+      <button class="add-user-button btn btn-primary" onclick="showAddUserInput()">Add User</button>
+      <button class="delete-user-button btn btn-danger" onclick="showDeleteInput()">Delete User</button>
+    </div>
+  </div>
+
+  <button class="logout-button btn btn-secondary" onclick="logout()">Logout</button>
+
+  <script>
+    function showAddUserInput() {
+      const addUserInputContainer = document.getElementById('addUserInputContainer');
+      addUserInputContainer.style.display = 'block';
+    }
+
+    function showDeleteInput() {
+      const deleteInputContainer = document.getElementById('deleteInputContainer');
+      deleteInputContainer.style.display = 'block';
+    }
+
+    function addUser() {
+    
+      const newUsername = document.getElementById('newUsername').value;
+      const newEmail = document.getElementById('newEmail').value;
+      const newPassword = document.getElementById('newPassword').value;
+      const newRole = document.getElementById('newRole').value;
+
+      
+      if (!newUsername || !newEmail || !newPassword || !newRole) {
+        console.error('Please enter all user details');
+        return;
+      }
+
+    
+      fetch('/api/admin/adduser', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: newUsername,
+          email: newEmail,
+          password: newPassword,
+          role: newRole,
+        }),
+      })
+      .then(response => {
+        if (response.ok) {
+        
+          console.log('User added successfully');
+        } else {
+        
+          console.error('Failed to add user');
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+      });
+
+      
+      const addUserInputContainer = document.getElementById('addUserInputContainer');
+      addUserInputContainer.style.display = 'none';
+    }
+
+    function deleteUser() {
+      
+      const userIdToDelete = document.getElementById('userIdToDelete').value;
+
+      
+      if (!userIdToDelete) {
+        console.error('Please enter a user ID');
+        return;
+      }
+
+    
+      fetch('/api/admin/deleteuser', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userIdToDelete,
+        }),
+      })
+      .then(response => {
+        if (response.ok) {
+          console.log('User deleted successfully');
+        } else {
+          console.error('Failed to delete user');
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+      });
+
+      const deleteInputContainer = document.getElementById('deleteInputContainer');
+      deleteInputContainer.style.display = 'none';
+    }
+
+    function logout() {
+      window.location.href = '/login.html';
+    }
+  </script>
+</body>
+</html>
