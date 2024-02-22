@@ -1,12 +1,12 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const bcrypt = require('bcrypt');
-const axios = require('axios');
 const { Pool } = require('pg');
 const path = require('path');
-// Example API endpoint for fetching books
-const apiEndpoint = '/api/books';
+const passport = require('passport');
+const LocalStrategy = require('passport-local').Strategy;
 
+const apiEndpoint = '/api/books';
 
 const app = express();
 
@@ -19,71 +19,129 @@ const pool = new Pool({
   port: 5433,
 });
 
-
-function checkUserRole(req, res, next) {
-  const userRole = req.user.role;
-
-  if (userRole === 'user') {
-    res.redirect('/user.html');
-  } else if (userRole === 'admin') {
-    res.redirect('/admin.html');
-  } else if (userRole === 'moderator') {
-    res.redirect('/moderator.html');
-  } else {
-    res.status(403).send('Unauthorized');
-  }
-
-  // Call next() to continue the middleware chain
-  next();
-}
-
-
+// Passport initialization
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
+app.use(require('express-session')({ secret: 'your-secret-key', resave: true, saveUninitialized: true }));
 
-app.post('/api/auth/signin', async (req, res, next) => {
-  const { username, password } = req.body;
-  const query = 'SELECT * FROM users WHERE username = $1';
-  const values = [username];
+app.use(passport.initialize());
+app.use(passport.session());
 
+passport.use(new LocalStrategy(
+  async function (username, password, done) {
+    try {
+      // Replace this with your actual user authentication logic
+      const result = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+
+      if (result.rows.length === 0) {
+        return done(null, false, { message: 'Incorrect username.' });
+      }
+
+      const user = result.rows[0];
+
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+
+      if (isPasswordValid) {
+        return done(null, user);
+      } else {
+        return done(null, false, { message: 'Incorrect password.' });
+      }
+    } catch (error) {
+      return done(error);
+    }
+  }
+));
+
+passport.serializeUser(function (user, done) {
+  done(null, user.id);
+});
+
+passport.deserializeUser(async function (id, done) {
   try {
-    const result = await pool.query(query, values);
+    // Replace this with your actual user retrieval logic
+    const result = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
 
     if (result.rows.length === 0) {
-      return res.status(404).send('User not found');
+      return done(null, false);
     }
 
     const user = result.rows[0];
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-
-    if (isPasswordValid) {
-      req.user = user;
-      checkUserRole(req, res, next); 
-    } else {
-      return res.status(401).send('Invalid password');
-    }
+    return done(null, user);
   } catch (error) {
-    console.error(error);
-    res.status(500).send('Error login user');
+    return done(error);
   }
 });
+
+// isAuthenticated middleware
+function isAuthenticated(req, res, next) {
+  if (req.isAuthenticated()) {
+    const userRole = req.user.role;
+
+    // Allow access based on user role
+    switch (userRole) {
+      case 'admin':
+        if (req.path === '/moderator.html') {
+          console.log('Unauthorized access!');
+          return res.redirect('/login');
+        }
+        console.log('Authenticated admin:', req.user);
+        return next();
+      case 'moderator':
+        console.log('Authenticated moderator:', req.user);
+        return next();
+      case 'user':
+        // Ensure that the user can only access their own page
+        if (req.path !== `/${userRole}.html`) {
+          console.log('Unauthorized access!');
+          return res.redirect('/login');
+        }
+        console.log('Authenticated user:', req.user);
+        return next();
+      default:
+        console.log('Unauthorized access!');
+        return res.redirect('/login');
+    }
+  }
+
+  console.log('Not authenticated!');
+  res.redirect('/login'); // Redirect to the login page if not authenticated
+}
+
+// Routes
+app.post('/api/auth/signin',
+  passport.authenticate('local', { failureRedirect: '/login.html' }),
+  function (req, res) {
+    // Authentication successful, handle the response based on user role
+    switch (req.user.role) {
+      case 'admin':
+        res.redirect('/admin.html');
+        break;
+      case 'moderator':
+        res.redirect('/moderator.html');
+        break;
+      case 'user':
+        res.redirect('/user.html');
+        break;
+      default:
+        res.redirect('/'); // Redirect to a default page if the role is not recognized
+    }
+  });
+
 
 app.post('/api/auth/signup', async (req, res, next) => {
   try {
     const { username, email, password, role } = req.body;
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const query =
-      'INSERT INTO users (username, email, password, role) VALUES ($1, $2, $3, $4) RETURNING *';
+    const query = 'INSERT INTO users (username, email, password, role) VALUES ($1, $2, $3, $4) RETURNING *';
     const values = [username, email, hashedPassword, role];
 
     const result = await pool.query(query, values);
 
     req.user = result.rows[0];
     next();
-
   } catch (error) {
     console.error('Signup error:', error);
     res.status(500).send('Error registering user');
@@ -91,6 +149,7 @@ app.post('/api/auth/signup', async (req, res, next) => {
 });
 
 app.post('/api/auth/logout', (req, res) => {
+  req.logout();
   res.redirect('/login.html');
 });
 
@@ -253,21 +312,23 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-app.get('/login.html', (req, res) => {
+app.get(['/login', '/login.html'], (req, res) => {
   res.sendFile(path.join(__dirname, 'login.html'));
 });
 
-app.get('/user.html', (req, res) => {
+
+app.get('/user.html', isAuthenticated, (req, res) => {
   res.sendFile(path.join(__dirname, 'user.html'));
 });
 
-app.get('/admin.html', (req, res) => {
+app.get('/admin.html', isAuthenticated, (req, res) => {
   res.sendFile(path.join(__dirname, 'admin.html'));
 });
 
-app.get('/moderator.html', (req, res) => {
+app.get('/moderator.html', isAuthenticated, (req, res) => {
   res.sendFile(path.join(__dirname, 'moderator.html'));
 });
+
 
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
